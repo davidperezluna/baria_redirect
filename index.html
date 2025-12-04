@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Restablecer Contraseña - Bar'ia</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * {
             margin: 0;
@@ -211,6 +210,7 @@
     </style>
 </head>
 <body>
+    <h1>v1</h1>
     <div class="container">
         <div class="logo">Bar'ia</div>
         <p class="subtitle">Restablecer tu contraseña</p>
@@ -266,322 +266,247 @@
         </div>
     </div>
 
-    <script>
-        (function() {
-            'use strict';
-            
-            // Configuración de Supabase
-            const SUPABASE_URL = 'https://tmtwnwppnvpxlachhiet.supabase.co';
-            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtdHdud3BwbnZweGxhY2hoaWV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1NDI4NDgsImV4cCI6MjA3NjExODg0OH0.VZ8dBphFebM_ffIGOUMtcB1RN3Rgg1xFQrVu1GD19Xs';
-            
-            // Inicializar Supabase
-            const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            
-            let recoveryCode = null;
-            let accessToken = null;
-            let refreshToken = null;
-            
-            // Obtener parámetros de la URL
-            function getUrlParams() {
-                const urlParams = new URLSearchParams(window.location.search);
-                const urlHash = window.location.hash.substring(1);
-                const hashParams = urlHash ? new URLSearchParams(urlHash) : null;
+    <script type="module">
+        import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+        
+        // Configuración de Supabase
+        const SUPABASE_URL = 'https://tmtwnwppnvpxlachhiet.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtdHdud3BwbnZweGxhY2hoaWV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1NDI4NDgsImV4cCI6MjA3NjExODg0OH0.VZ8dBphFebM_ffIGOUMtcB1RN3Rgg1xFQrVu1GD19Xs';
+        
+        // Inicializar Supabase
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            auth: {
+                autoRefreshToken: true,
+                persistSession: true,
+                detectSessionInUrl: true,
+                storage: window.localStorage
+            }
+        });
+        
+        // Mostrar/ocultar elementos
+        function showLoading() {
+            document.getElementById('loadingState').style.display = 'block';
+            document.getElementById('formContainer').style.display = 'none';
+        }
+        
+        function hideLoading() {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('formContainer').style.display = 'block';
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            document.getElementById('successMessage').style.display = 'none';
+        }
+        
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+        
+        function hideMessages() {
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'none';
+        }
+        
+        // Toggle password visibility
+        window.togglePassword = function(inputId) {
+            const input = document.getElementById(inputId);
+            const button = input.nextElementSibling;
+            if (input.type === 'password') {
+                input.type = 'text';
+                button.textContent = '🙈';
+            } else {
+                input.type = 'password';
+                button.textContent = '👁️';
+            }
+        };
+        
+        // Procesar recuperación de contraseña
+        async function processRecovery() {
+            try {
+                // Supabase automáticamente detecta y procesa los parámetros de la URL
+                // cuando detectSessionInUrl está habilitado
+                // Esperar un momento para que Supabase procese la URL
+                await new Promise(resolve => setTimeout(resolve, 500));
                 
-                // También verificar si venimos de la URL de verify de Supabase
-                const fullUrl = window.location.href;
-                let tokenFromVerify = null;
-                let typeFromVerify = null;
+                // Verificar si hay una sesión activa
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
                 
-                // Si la URL contiene /auth/v1/verify, extraer el token de ahí
-                if (fullUrl.includes('/auth/v1/verify')) {
-                    const verifyParams = new URLSearchParams(fullUrl.split('?')[1] || '');
-                    tokenFromVerify = verifyParams.get('token');
-                    typeFromVerify = verifyParams.get('type');
-                }
-                
-                return {
-                    code: urlParams.get('code') || (hashParams ? hashParams.get('code') : null),
-                    token: urlParams.get('token') || tokenFromVerify,
-                    type: urlParams.get('type') || typeFromVerify,
-                    access_token: urlParams.get('access_token') || (hashParams ? hashParams.get('access_token') : null),
-                    refresh_token: urlParams.get('refresh_token') || (hashParams ? hashParams.get('refresh_token') : null),
-                    error: urlParams.get('error') || (hashParams ? hashParams.get('error') : null),
-                    error_description: urlParams.get('error_description') || (hashParams ? hashParams.get('error_description') : null)
-                };
-            }
-            
-            // Mostrar/ocultar elementos
-            function showLoading() {
-                document.getElementById('loadingState').style.display = 'block';
-                document.getElementById('formContainer').style.display = 'none';
-            }
-            
-            function hideLoading() {
-                document.getElementById('loadingState').style.display = 'none';
-                document.getElementById('formContainer').style.display = 'block';
-            }
-            
-            function showError(message) {
-                const errorDiv = document.getElementById('errorMessage');
-                errorDiv.textContent = message;
-                errorDiv.style.display = 'block';
-                document.getElementById('successMessage').style.display = 'none';
-            }
-            
-            function showSuccess(message) {
-                const successDiv = document.getElementById('successMessage');
-                successDiv.textContent = message;
-                successDiv.style.display = 'block';
-                document.getElementById('errorMessage').style.display = 'none';
-            }
-            
-            function hideMessages() {
-                document.getElementById('errorMessage').style.display = 'none';
-                document.getElementById('successMessage').style.display = 'none';
-            }
-            
-            // Toggle password visibility
-            window.togglePassword = function(inputId) {
-                const input = document.getElementById(inputId);
-                const button = input.nextElementSibling;
-                if (input.type === 'password') {
-                    input.type = 'text';
-                    button.textContent = '🙈';
-                } else {
-                    input.type = 'password';
-                    button.textContent = '👁️';
-                }
-            };
-            
-            // Procesar código o tokens de recuperación
-            async function processRecovery() {
-                const params = getUrlParams();
-                
-                if (params.error) {
-                    showError('Error: ' + (params.error_description || params.error));
+                if (sessionError) {
+                    console.error('Error obteniendo sesión:', sessionError);
+                    showError('Error al procesar el enlace de recuperación. Por favor, solicita un nuevo enlace.');
                     return false;
                 }
                 
-                // Si hay token de recuperación (viene directamente de Supabase verify)
-                if (params.token && params.type === 'recovery') {
-                    try {
-                        // Usar verifyOtp para verificar el token de recuperación
-                        // El token que viene de Supabase es un token hash
-                        const { data, error } = await supabase.auth.verifyOtp({
-                            token_hash: params.token,
-                            type: 'recovery'
-                        });
-                        
-                        if (error) {
-                            console.error('Error verificando token:', error);
-                            // Si falla verifyOtp, intentar con el método alternativo
-                            // Supabase puede redirigir automáticamente después de verificar
-                            // Esperar un momento y verificar si hay sesión
-                            await new Promise(resolve => setTimeout(resolve, 1000));
-                            const { data: { session } } = await supabase.auth.getSession();
-                            if (session) {
-                                console.log('Sesión establecida después de verificar token');
-                                window.history.replaceState({}, document.title, window.location.pathname);
-                                return true;
-                            }
-                            showError('El token de recuperación es inválido o ha expirado. Solicita uno nuevo.');
-                            return false;
-                        }
-                        
-                        if (data.session) {
-                            console.log('Sesión de recuperación establecida con verifyOtp');
-                            // Limpiar URL
-                            window.history.replaceState({}, document.title, window.location.pathname);
-                            return true;
-                        }
-                    } catch (error) {
-                        console.error('Error procesando token:', error);
-                        // Intentar verificar si hay sesión después del error
-                        const { data: { session } } = await supabase.auth.getSession();
-                        if (session) {
-                            console.log('Sesión encontrada después del error');
-                            window.history.replaceState({}, document.title, window.location.pathname);
-                            return true;
-                        }
-                        showError('Error procesando el token de recuperación: ' + error.message);
-                        return false;
-                    }
-                }
-                
-                // Si hay código (después de que Supabase verifica el token)
-                if (params.code) {
-                    // Con PKCE, Supabase normalmente establece la sesión automáticamente
-                    // cuando verifica el token en su servidor, antes de redirigir
-                    // Verificar primero si ya hay sesión (Supabase puede haberla establecido)
-                    const { data: { session: sessionCheck } } = await supabase.auth.getSession();
-                    if (sessionCheck) {
-                        console.log('Sesión ya establecida por Supabase (PKCE automático)');
-                        window.history.replaceState({}, document.title, window.location.pathname);
-                        return true;
-                    }
-                    
-                    // Si no hay sesión, el código requiere code_verifier para PKCE
-                    // Pero no lo tenemos en una página estática
-                    // Esperar un poco más - a veces Supabase tarda en establecer la sesión
-                    console.log('Esperando a que Supabase establezca la sesión...');
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                    
-                    const { data: { session: delayedSession } } = await supabase.auth.getSession();
-                    if (delayedSession) {
-                        console.log('Sesión establecida después de esperar');
-                        window.history.replaceState({}, document.title, window.location.pathname);
-                        return true;
-                    }
-                    
-                    // Si aún no hay sesión, mostrar mensaje informativo
-                    // El usuario puede intentar hacer clic en el enlace nuevamente
-                    showError('No se pudo establecer la sesión automáticamente. Por favor, intenta hacer clic en el enlace del email nuevamente. Si el problema persiste, solicita un nuevo enlace de recuperación.');
-                    return false;
-                }
-                
-                // Si hay tokens directos, establecer la sesión
-                if (params.access_token && params.refresh_token) {
-                    try {
-                        const { data, error } = await supabase.auth.setSession({
-                            access_token: params.access_token,
-                            refresh_token: params.refresh_token
-                        });
-                        if (error) {
-                            showError('Los tokens de recuperación son inválidos o han expirado. Solicita uno nuevo.');
-                            return false;
-                        }
-                        if (data.session) {
-                            console.log('Sesión de recuperación establecida con tokens');
-                            // Limpiar URL
-                            window.history.replaceState({}, document.title, window.location.pathname);
-                            return true;
-                        }
-                    } catch (error) {
-                        showError('Error estableciendo la sesión: ' + error.message);
-                        return false;
-                    }
-                }
-                
-                // Verificar si ya hay una sesión activa (puede que Supabase la haya establecido automáticamente)
-                const { data: { session } } = await supabase.auth.getSession();
                 if (session) {
-                    console.log('Ya hay una sesión activa');
-                    // Limpiar URL
+                    console.log('✅ Sesión de recuperación establecida correctamente');
+                    // Limpiar la URL de parámetros sensibles
                     window.history.replaceState({}, document.title, window.location.pathname);
                     return true;
                 }
                 
-                showError('No se encontró código o token de recuperación válido en la URL.');
-                return false;
-            }
-            
-            // Cambiar contraseña
-            async function changePassword(newPassword) {
-                try {
-                    const { data, error } = await supabase.auth.updateUser({
-                        password: newPassword
+                // Si no hay sesión, verificar si hay parámetros en la URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const hashParams = new URLSearchParams(window.location.hash.substring(1));
+                
+                const hasCode = urlParams.get('code') || hashParams.get('code');
+                const hasToken = urlParams.get('token') || hashParams.get('token');
+                const hasError = urlParams.get('error') || hashParams.get('error');
+                
+                if (hasError) {
+                    const errorDesc = urlParams.get('error_description') || hashParams.get('error_description') || hasError;
+                    showError('Error: ' + errorDesc);
+                    return false;
+                }
+                
+                // Si hay un token de recuperación, intentar verificarlo
+                if (hasToken) {
+                    const token = urlParams.get('token') || hashParams.get('token');
+                    const type = urlParams.get('type') || hashParams.get('type') || 'recovery';
+                    
+                    console.log('Token de recuperación encontrado, verificando...');
+                    const { data, error } = await supabase.auth.verifyOtp({
+                        token_hash: token,
+                        type: type
                     });
                     
                     if (error) {
-                        throw error;
+                        console.error('Error verificando token:', error);
+                        showError('El enlace de recuperación es inválido o ha expirado. Por favor, solicita un nuevo enlace.');
+                        return false;
                     }
                     
-                    return { success: true, error: null };
-                } catch (error) {
-                    return { success: false, error: error };
+                    if (data.session) {
+                        console.log('✅ Sesión establecida después de verificar token');
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                        return true;
+                    }
                 }
+                
+                // Si hay código pero no sesión, esperar un poco más
+                if (hasCode) {
+                    console.log('Código encontrado, esperando a que Supabase establezca la sesión...');
+                    for (let i = 0; i < 3; i++) {
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        const { data: { session: checkSession } } = await supabase.auth.getSession();
+                        if (checkSession) {
+                            console.log('✅ Sesión establecida después de esperar');
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                            return true;
+                        }
+                    }
+                }
+                
+                // Si llegamos aquí sin sesión, mostrar error
+                showError('No se pudo establecer la sesión de recuperación. El enlace puede haber expirado o ser inválido. Por favor, solicita un nuevo enlace de recuperación.');
+                return false;
+                
+            } catch (error) {
+                console.error('Error procesando recuperación:', error);
+                showError('Error inesperado: ' + (error.message || error));
+                return false;
+            }
+        }
+        
+        // Cambiar contraseña
+        async function changePassword(newPassword) {
+            try {
+                const { data, error } = await supabase.auth.updateUser({
+                    password: newPassword
+                });
+                
+                if (error) {
+                    throw error;
+                }
+                
+                return { success: true, error: null };
+            } catch (error) {
+                return { success: false, error: error };
+            }
+        }
+        
+        // Manejar envío del formulario
+        document.getElementById('resetForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            hideMessages();
+            
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            // Validaciones
+            if (newPassword.length < 6) {
+                showError('La contraseña debe tener al menos 6 caracteres.');
+                return;
             }
             
-            // Manejar envío del formulario
-            document.getElementById('resetForm').addEventListener('submit', async function(e) {
-                e.preventDefault();
+            if (newPassword !== confirmPassword) {
+                showError('Las contraseñas no coinciden.');
+                return;
+            }
+            
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner"></span> Cambiando contraseña...';
+            
+            try {
+                const result = await changePassword(newPassword);
                 
-                hideMessages();
-                
-                const newPassword = document.getElementById('newPassword').value;
-                const confirmPassword = document.getElementById('confirmPassword').value;
-                
-                // Validaciones
-                if (newPassword.length < 6) {
-                    showError('La contraseña debe tener al menos 6 caracteres.');
-                    return;
-                }
-                
-                if (newPassword !== confirmPassword) {
-                    showError('Las contraseñas no coinciden.');
-                    return;
-                }
-                
-                const submitBtn = document.getElementById('submitBtn');
-                submitBtn.disabled = true;
-                submitBtn.innerHTML = '<span class="spinner"></span> Cambiando contraseña...';
-                
-                try {
-                    const result = await changePassword(newPassword);
+                if (result.success) {
+                    showSuccess('¡Contraseña cambiada exitosamente!');
+                    document.getElementById('resetForm').style.display = 'none';
+                    document.getElementById('backLink').style.display = 'block';
                     
-                    if (result.success) {
-                        showSuccess('¡Contraseña cambiada exitosamente!');
-                        document.getElementById('resetForm').style.display = 'none';
-                        document.getElementById('backLink').style.display = 'block';
-                        
-                        // Cerrar sesión después de cambiar la contraseña
-                        setTimeout(async () => {
-                            await supabase.auth.signOut();
-                        }, 2000);
-                    } else {
-                        let errorMsg = 'Error al cambiar la contraseña.';
-                        if (result.error) {
-                            if (result.error.message.includes('same')) {
-                                errorMsg = 'La nueva contraseña debe ser diferente a la actual.';
-                            } else if (result.error.message.includes('weak')) {
-                                errorMsg = 'La contraseña es muy débil. Usa una contraseña más segura.';
-                            } else {
-                                errorMsg = 'Error: ' + result.error.message;
-                            }
+                    // Cerrar sesión después de cambiar la contraseña
+                    setTimeout(async () => {
+                        await supabase.auth.signOut();
+                    }, 2000);
+                } else {
+                    let errorMsg = 'Error al cambiar la contraseña.';
+                    if (result.error) {
+                        if (result.error.message && result.error.message.includes('same')) {
+                            errorMsg = 'La nueva contraseña debe ser diferente a la actual.';
+                        } else if (result.error.message && result.error.message.includes('weak')) {
+                            errorMsg = 'La contraseña es muy débil. Usa una contraseña más segura.';
+                        } else {
+                            errorMsg = 'Error: ' + (result.error.message || result.error);
                         }
-                        showError(errorMsg);
-                        submitBtn.disabled = false;
-                        submitBtn.textContent = 'Cambiar Contraseña';
                     }
-                } catch (error) {
-                    showError('Error inesperado: ' + error.message);
+                    showError(errorMsg);
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'Cambiar Contraseña';
                 }
-            });
-            
-            // Inicializar cuando el DOM esté listo
-            async function init() {
-                showLoading();
-                
-                // Primero, verificar si Supabase ya estableció la sesión automáticamente
-                // Esto puede pasar cuando Supabase verifica el token en su servidor
-                const { data: { session: existingSession } } = await supabase.auth.getSession();
-                
-                if (existingSession) {
-                    console.log('Sesión ya establecida por Supabase');
-                    hideLoading();
-                    // Limpiar URL
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                    return;
-                }
-                
-                // Si no hay sesión, intentar procesar los parámetros de la URL
-                const hasSession = await processRecovery();
-                
-                hideLoading();
-                
-                if (!hasSession) {
-                    document.getElementById('resetForm').style.display = 'none';
-                }
+            } catch (error) {
+                showError('Error inesperado: ' + (error.message || error));
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Cambiar Contraseña';
             }
+        });
+        
+        // Inicializar cuando el DOM esté listo
+        async function init() {
+            showLoading();
             
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', init);
-            } else {
-                init();
+            // Procesar la recuperación
+            const hasSession = await processRecovery();
+            
+            hideLoading();
+            
+            if (!hasSession) {
+                document.getElementById('resetForm').style.display = 'none';
             }
-        })();
+        }
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
     </script>
 </body>
 </html>
