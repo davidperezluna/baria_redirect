@@ -211,7 +211,7 @@
 </head>
 <body>
     <div class="container">
-        <div class="logo">Bar'ia v4</div>
+        <div class="logo">Bar'ia v5</div>
         <p class="subtitle">Restablecer tu contraseña</p>
         
         <!-- Estado de carga -->
@@ -352,7 +352,50 @@
                     return false;
                 }
                 
-                // SOLUCIÓN REAL: Usar exchangeCodeForSession con la URL completa
+                // 🔥 OPCIÓN 2: Token OTP con email (SIN PKCE) - MÉTODO RECOMENDADO
+                // Formato: ?email=usuario@ejemplo.com&token=abc123
+                // Este es el método que NO requiere PKCE - debe ir PRIMERO
+                const email = urlParams.get('email');
+                const otpToken = urlParams.get('token');
+                
+                if (email && otpToken) {
+                    console.log('📧 Token OTP encontrado con email (método sin PKCE)');
+                    console.log('Email:', email);
+                    console.log('Token:', otpToken.substring(0, 20) + '...');
+                    
+                    try {
+                        // Usar verifyOtp con email y token - NO requiere PKCE
+                        const { data, error: verifyError } = await supabase.auth.verifyOtp({
+                            type: 'recovery',
+                            token: otpToken,
+                            email: email
+                        });
+                        
+                        if (verifyError) {
+                            console.error('❌ Error verificando OTP:', verifyError);
+                            showError('El enlace de recuperación es inválido o ha expirado. Por favor, solicita un nuevo enlace.');
+                            return false;
+                        }
+                        
+                        if (data.session) {
+                            console.log('✅ Sesión establecida correctamente con verifyOtp (sin PKCE)');
+                            console.log('Usuario autenticado:', data.session.user?.email);
+                            // Limpiar la URL de parámetros sensibles
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                            return true;
+                        } else {
+                            console.error('❌ verifyOtp no devolvió sesión');
+                            showError('No se pudo establecer la sesión. Por favor, solicita un nuevo enlace de recuperación.');
+                            return false;
+                        }
+                    } catch (verifyErr) {
+                        console.error('❌ Excepción en verifyOtp:', verifyErr);
+                        showError('Error inesperado al procesar el enlace: ' + (verifyErr.message || verifyErr));
+                        return false;
+                    }
+                }
+                
+                // SOLUCIÓN ALTERNATIVA: Usar exchangeCodeForSession con la URL completa (método PKCE)
                 // Esto funciona incluso con PKCE porque Supabase extrae toda la información del hash o query string
                 const currentUrl = window.location.href;
                 const code = urlParams.get('code') || hashParams.get('code');
@@ -377,7 +420,13 @@
                                 status: exchangeError.status,
                                 name: exchangeError.name
                             });
-                            showError('Error al validar el enlace: ' + (exchangeError.message || 'El enlace puede haber expirado o ser inválido. Por favor, solicita un nuevo enlace.'));
+                            
+                            // Si el error es relacionado con code_verifier, indicar que debe usar el método sin PKCE
+                            if (exchangeError.message?.includes('code_verifier') || exchangeError.message?.includes('code verifier')) {
+                                showError('Este enlace requiere configuración adicional (PKCE). Por favor, configura el template de email de Supabase para usar el método sin PKCE. En el template, usa: https://davidperezluna.github.io/baria_redirect/?email={{ .Email }}&token={{ .Token }} en lugar de {{ .RedirectTo }}');
+                            } else {
+                                showError('Error al validar el enlace: ' + (exchangeError.message || 'El enlace puede haber expirado o ser inválido. Por favor, solicita un nuevo enlace.'));
+                            }
                             return false;
                         }
                         
@@ -439,12 +488,13 @@
                     }
                 }
                 
-                // Si hay token de recuperación (formato antiguo), intentar verificarlo
+                // Si hay token de recuperación con type (formato antiguo con token_hash), intentar verificarlo
+                // Nota: Solo si NO es el caso de email+token (ya procesado arriba)
                 const token = urlParams.get('token') || hashParams.get('token');
                 const type = urlParams.get('type') || hashParams.get('type');
                 
-                if (token && type === 'recovery') {
-                    console.log('🔐 Token de recuperación encontrado, verificando...');
+                if (token && type === 'recovery' && !email) {
+                    console.log('🔐 Token de recuperación encontrado (formato con token_hash), verificando...');
                     const { data, error: verifyError } = await supabase.auth.verifyOtp({
                         token_hash: token,
                         type: 'recovery'
