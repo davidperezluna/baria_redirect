@@ -287,8 +287,22 @@
                 const urlHash = window.location.hash.substring(1);
                 const hashParams = urlHash ? new URLSearchParams(urlHash) : null;
                 
+                // También verificar si venimos de la URL de verify de Supabase
+                const fullUrl = window.location.href;
+                let tokenFromVerify = null;
+                let typeFromVerify = null;
+                
+                // Si la URL contiene /auth/v1/verify, extraer el token de ahí
+                if (fullUrl.includes('/auth/v1/verify')) {
+                    const verifyParams = new URLSearchParams(fullUrl.split('?')[1] || '');
+                    tokenFromVerify = verifyParams.get('token');
+                    typeFromVerify = verifyParams.get('type');
+                }
+                
                 return {
                     code: urlParams.get('code') || (hashParams ? hashParams.get('code') : null),
+                    token: urlParams.get('token') || tokenFromVerify,
+                    type: urlParams.get('type') || typeFromVerify,
                     access_token: urlParams.get('access_token') || (hashParams ? hashParams.get('access_token') : null),
                     refresh_token: urlParams.get('refresh_token') || (hashParams ? hashParams.get('refresh_token') : null),
                     error: urlParams.get('error') || (hashParams ? hashParams.get('error') : null),
@@ -348,27 +362,84 @@
                     return false;
                 }
                 
-                // Si hay código, intercambiarlo por sesión
-                if (params.code) {
+                // Si hay token de recuperación (viene directamente de Supabase verify)
+                if (params.token && params.type === 'recovery') {
                     try {
-                        const { data, error } = await supabase.auth.exchangeCodeForSession(params.code);
+                        // Usar verifyOtp para verificar el token de recuperación
+                        // El token que viene de Supabase es un token hash
+                        const { data, error } = await supabase.auth.verifyOtp({
+                            token_hash: params.token,
+                            type: 'recovery'
+                        });
+                        
                         if (error) {
-                            showError('El código de recuperación es inválido o ha expirado. Solicita uno nuevo.');
+                            console.error('Error verificando token:', error);
+                            // Si falla verifyOtp, intentar con el método alternativo
+                            // Supabase puede redirigir automáticamente después de verificar
+                            // Esperar un momento y verificar si hay sesión
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                            const { data: { session } } = await supabase.auth.getSession();
+                            if (session) {
+                                console.log('Sesión establecida después de verificar token');
+                                window.history.replaceState({}, document.title, window.location.pathname);
+                                return true;
+                            }
+                            showError('El token de recuperación es inválido o ha expirado. Solicita uno nuevo.');
                             return false;
                         }
+                        
                         if (data.session) {
-                            console.log('Sesión de recuperación establecida');
+                            console.log('Sesión de recuperación establecida con verifyOtp');
                             // Limpiar URL
                             window.history.replaceState({}, document.title, window.location.pathname);
                             return true;
                         }
                     } catch (error) {
-                        showError('Error procesando el código de recuperación: ' + error.message);
+                        console.error('Error procesando token:', error);
+                        // Intentar verificar si hay sesión después del error
+                        const { data: { session } } = await supabase.auth.getSession();
+                        if (session) {
+                            console.log('Sesión encontrada después del error');
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                            return true;
+                        }
+                        showError('Error procesando el token de recuperación: ' + error.message);
                         return false;
                     }
                 }
                 
-                // Si hay tokens, establecer la sesión
+                // Si hay código (después de que Supabase verifica el token)
+                if (params.code) {
+                    // Con PKCE, Supabase normalmente establece la sesión automáticamente
+                    // cuando verifica el token en su servidor, antes de redirigir
+                    // Verificar primero si ya hay sesión (Supabase puede haberla establecido)
+                    const { data: { session: sessionCheck } } = await supabase.auth.getSession();
+                    if (sessionCheck) {
+                        console.log('Sesión ya establecida por Supabase (PKCE automático)');
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                        return true;
+                    }
+                    
+                    // Si no hay sesión, el código requiere code_verifier para PKCE
+                    // Pero no lo tenemos en una página estática
+                    // Esperar un poco más - a veces Supabase tarda en establecer la sesión
+                    console.log('Esperando a que Supabase establezca la sesión...');
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                    const { data: { session: delayedSession } } = await supabase.auth.getSession();
+                    if (delayedSession) {
+                        console.log('Sesión establecida después de esperar');
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                        return true;
+                    }
+                    
+                    // Si aún no hay sesión, mostrar mensaje informativo
+                    // El usuario puede intentar hacer clic en el enlace nuevamente
+                    showError('No se pudo establecer la sesión automáticamente. Por favor, intenta hacer clic en el enlace del email nuevamente. Si el problema persiste, solicita un nuevo enlace de recuperación.');
+                    return false;
+                }
+                
+                // Si hay tokens directos, establecer la sesión
                 if (params.access_token && params.refresh_token) {
                     try {
                         const { data, error } = await supabase.auth.setSession({
@@ -380,7 +451,7 @@
                             return false;
                         }
                         if (data.session) {
-                            console.log('Sesión de recuperación establecida');
+                            console.log('Sesión de recuperación establecida con tokens');
                             // Limpiar URL
                             window.history.replaceState({}, document.title, window.location.pathname);
                             return true;
@@ -391,10 +462,12 @@
                     }
                 }
                 
-                // Verificar si ya hay una sesión activa
+                // Verificar si ya hay una sesión activa (puede que Supabase la haya establecido automáticamente)
                 const { data: { session } } = await supabase.auth.getSession();
                 if (session) {
                     console.log('Ya hay una sesión activa');
+                    // Limpiar URL
+                    window.history.replaceState({}, document.title, window.location.pathname);
                     return true;
                 }
                 
@@ -481,6 +554,19 @@
             async function init() {
                 showLoading();
                 
+                // Primero, verificar si Supabase ya estableció la sesión automáticamente
+                // Esto puede pasar cuando Supabase verifica el token en su servidor
+                const { data: { session: existingSession } } = await supabase.auth.getSession();
+                
+                if (existingSession) {
+                    console.log('Sesión ya establecida por Supabase');
+                    hideLoading();
+                    // Limpiar URL
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    return;
+                }
+                
+                // Si no hay sesión, intentar procesar los parámetros de la URL
                 const hasSession = await processRecovery();
                 
                 hideLoading();
