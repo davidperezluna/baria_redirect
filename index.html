@@ -71,11 +71,17 @@
             
             // Obtener parámetros de la URL
             const urlParams = new URLSearchParams(window.location.search);
-            const code = urlParams.get('code');
-            const accessToken = urlParams.get('access_token');
-            const refreshToken = urlParams.get('refresh_token');
-            const error = urlParams.get('error');
-            const errorDescription = urlParams.get('error_description');
+            const urlHash = window.location.hash.substring(1); // Obtener fragment (#)
+            const hashParams = urlHash ? new URLSearchParams(urlHash) : null;
+            
+            // Buscar código en query params o en hash
+            const code = urlParams.get('code') || (hashParams ? hashParams.get('code') : null);
+            const token = urlParams.get('token');
+            const type = urlParams.get('type');
+            const accessToken = urlParams.get('access_token') || (hashParams ? hashParams.get('access_token') : null);
+            const refreshToken = urlParams.get('refresh_token') || (hashParams ? hashParams.get('refresh_token') : null);
+            const error = urlParams.get('error') || (hashParams ? hashParams.get('error') : null);
+            const errorDescription = urlParams.get('error_description') || (hashParams ? hashParams.get('error_description') : null);
 
             // Deep link de la aplicación
             const APP_DEEP_LINK = 'com.baria.app://auth/reset-password';
@@ -87,6 +93,9 @@
                 if (code) {
                     // Si hay código, agregarlo como query param
                     deepLinkUrl += '?code=' + encodeURIComponent(code);
+                } else if (token && type === 'recovery') {
+                    // Si hay token de recuperación, agregarlo como query param
+                    deepLinkUrl += '?token=' + encodeURIComponent(token) + '&type=' + encodeURIComponent(type);
                 } else if (accessToken && refreshToken) {
                     // Si hay tokens, agregarlos en el fragment
                     deepLinkUrl += '#' + new URLSearchParams({
@@ -137,11 +146,11 @@
                     return;
                 }
 
-                // Si hay código o tokens, redirigir a la app
-                if (code || (accessToken && refreshToken)) {
+                // Si hay código, token de recuperación o tokens, redirigir a la app
+                if (code || (token && type === 'recovery') || (accessToken && refreshToken)) {
                     redirectToApp();
                 } else {
-                    showError('No se encontró código de recuperación en la URL.');
+                    showError('No se encontró código o token de recuperación en la URL.');
                 }
             }
 
