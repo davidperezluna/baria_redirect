@@ -138,19 +138,30 @@
             `;
         }
 
-        // Manejar errores
-        if (error) {
-            document.getElementById('spinner').style.display = 'none';
-            showError(errorDescription || error);
-            return;
+        // Función principal de inicialización
+        function init() {
+            // Manejar errores
+            if (error) {
+                document.getElementById('spinner').style.display = 'none';
+                showError(errorDescription || error);
+                return;
+            }
+
+            // Si hay código o tokens, redirigir a la app
+            if (code || (accessToken && refreshToken)) {
+                redirectToApp();
+            } else {
+                showError('No se encontró código de recuperación en la URL.');
+            }
         }
 
-        // Si hay código o tokens, redirigir a la app
-        if (code || (accessToken && refreshToken)) {
-            redirectToApp();
+        // Ejecutar cuando el DOM esté listo
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
         } else {
-            showError('No se encontró código de recuperación en la URL.');
+            init();
         }
     </script>
 </body>
 </html>
+
