@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Restablecer Contraseña - Baria</title>
+    <title>Restablecer Contraseña - Bar'ia</title>
     <style>
         * {
             margin: 0;
@@ -211,7 +211,7 @@
 </head>
 <body>
     <div class="container">
-        <div class="logo">Baria</div>
+        <div class="logo">Bar'ia v5</div>
         <p class="subtitle">Restablecer tu contraseña</p>
         
         <!-- Estado de carga -->
@@ -265,12 +265,110 @@
         </div>
     </div>
 
+    <script>
+        // Protección básica contra inspección (NO es seguridad real, solo ofuscación)
+        // IMPORTANTE: La clave anónima de Supabase está diseñada para ser pública.
+        // La seguridad real se basa en Row Level Security (RLS) y políticas en Supabase.
+        (function() {
+            'use strict';
+            
+            // Guardar referencia original del console para uso interno
+            const _console = {
+                log: console.log.bind(console),
+                warn: console.warn.bind(console),
+                error: console.error.bind(console),
+                info: console.info.bind(console),
+                debug: console.debug.bind(console)
+            };
+            
+            // Detectar herramientas de desarrollo y mostrar advertencia
+            const devtools = {
+                open: false
+            };
+            
+            const threshold = 160;
+            setInterval(function() {
+                if (window.outerHeight - window.innerHeight > threshold || 
+                    window.outerWidth - window.innerWidth > threshold) {
+                    if (!devtools.open) {
+                        devtools.open = true;
+                        _console.clear();
+                        _console.log('%c⚠️ ADVERTENCIA', 'color: red; font-size: 50px; font-weight: bold;');
+                        _console.log('%cEsta es una función del navegador para desarrolladores.', 'font-size: 16px;');
+                        _console.log('%cSi alguien te pidió que pegues algo aquí, es una estafa.', 'font-size: 16px;');
+                    }
+                } else {
+                    devtools.open = false;
+                }
+            }, 500);
+            
+            // Sobrescribir console para ocultar logs en producción (pero mantener funcionalidad)
+            const originalConsole = window.console;
+            Object.defineProperty(window, 'console', {
+                value: {
+                    ...originalConsole,
+                    log: function() {
+                        // Silenciar logs en producción
+                        if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                            return;
+                        }
+                        originalConsole.log.apply(originalConsole, arguments);
+                    },
+                    warn: function() {
+                        if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                            return;
+                        }
+                        originalConsole.warn.apply(originalConsole, arguments);
+                    },
+                    error: function() {
+                        // Mantener errores críticos visibles
+                        originalConsole.error.apply(originalConsole, arguments);
+                    },
+                    info: function() {
+                        if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                            return;
+                        }
+                        originalConsole.info.apply(originalConsole, arguments);
+                    },
+                    debug: function() {
+                        if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                            return;
+                        }
+                        originalConsole.debug.apply(originalConsole, arguments);
+                    }
+                },
+                writable: false,
+                configurable: false
+            });
+        })();
+    </script>
+    
     <script type="module">
         import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
         
-        // Configuración de Supabase
-        const SUPABASE_URL = 'https://tmtwnwppnvpxlachhiet.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtdHdud3BwbnZweGxhY2hoaWV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1NDI4NDgsImV4cCI6MjA3NjExODg0OH0.VZ8dBphFebM_ffIGOUMtcB1RN3Rgg1xFQrVu1GD19Xs';
+        // Configuración de Supabase (ofuscada)
+        // NOTA: La clave anónima de Supabase está diseñada para ser pública.
+        // La seguridad real se basa en Row Level Security (RLS) y políticas en Supabase.
+        // Esta ofuscación es solo una medida básica de protección.
+        
+        // Función para decodificar la clave (ofuscación básica)
+        function getConfig() {
+            // Dividir la clave en partes para ofuscación
+            const parts = [
+                'https://tmtwnwppnvpxlachhiet.supabase.co',
+                'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',
+                '.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtdHdud3BwbnZweGxhY2hoaWV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1NDI4NDgsImV4cCI6MjA3NjExODg0OH0',
+                '.VZ8dBphFebM_ffIGOUMtcB1RN3Rgg1xFQrVu1GD19Xs'
+            ];
+            return {
+                url: parts[0],
+                key: parts[1] + parts[2] + parts[3]
+            };
+        }
+        
+        const config = getConfig();
+        const SUPABASE_URL = config.url;
+        const SUPABASE_ANON_KEY = config.key;
         
         // Inicializar Supabase
         const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -328,13 +426,14 @@
         // Procesar recuperación de contraseña
         async function processRecovery() {
             try {
-                console.log('🔍 Iniciando procesamiento de recuperación...');
-                console.log('URL actual:', window.location.href);
+                // Logs solo en desarrollo (comentados para producción)
+                // console.log('🔍 Iniciando procesamiento de recuperación...');
+                // console.log('URL actual:', window.location.href);
                 
                 // Verificar primero si ya hay una sesión activa
                 const { data: { session: existingSession } } = await supabase.auth.getSession();
                 if (existingSession) {
-                    console.log('✅ Ya hay una sesión activa');
+                    // console.log('✅ Ya hay una sesión activa');
                     window.history.replaceState({}, document.title, window.location.pathname);
                     return true;
                 }
@@ -347,7 +446,7 @@
                 
                 // Si hay error, mostrarlo
                 if (error) {
-                    console.error('❌ Error en URL:', error, errorDescription);
+                    // console.error('❌ Error en URL:', error, errorDescription);
                     showError('Error: ' + (errorDescription || error));
                     return false;
                 }
@@ -359,9 +458,7 @@
                 const otpToken = urlParams.get('token');
                 
                 if (email && otpToken) {
-                    console.log('📧 Token OTP encontrado con email (método sin PKCE)');
-                    console.log('Email:', email);
-                    console.log('Token:', otpToken.substring(0, 20) + '...');
+                    // console.log('📧 Token OTP encontrado con email (método sin PKCE)');
                     
                     try {
                         // Usar verifyOtp con email y token - NO requiere PKCE
@@ -372,24 +469,23 @@
                         });
                         
                         if (verifyError) {
-                            console.error('❌ Error verificando OTP:', verifyError);
+                            // console.error('❌ Error verificando OTP:', verifyError);
                             showError('El enlace de recuperación es inválido o ha expirado. Por favor, solicita un nuevo enlace.');
                             return false;
                         }
                         
                         if (data.session) {
-                            console.log('✅ Sesión establecida correctamente con verifyOtp (sin PKCE)');
-                            console.log('Usuario autenticado:', data.session.user?.email);
+                            // console.log('✅ Sesión establecida correctamente con verifyOtp (sin PKCE)');
                             // Limpiar la URL de parámetros sensibles
                             window.history.replaceState({}, document.title, window.location.pathname);
                             return true;
                         } else {
-                            console.error('❌ verifyOtp no devolvió sesión');
+                            // console.error('❌ verifyOtp no devolvió sesión');
                             showError('No se pudo establecer la sesión. Por favor, solicita un nuevo enlace de recuperación.');
                             return false;
                         }
                     } catch (verifyErr) {
-                        console.error('❌ Excepción en verifyOtp:', verifyErr);
+                        // console.error('❌ Excepción en verifyOtp:', verifyErr);
                         showError('Error inesperado al procesar el enlace: ' + (verifyErr.message || verifyErr));
                         return false;
                     }
@@ -403,9 +499,7 @@
                 
                 // Si hay código en la URL (query string o hash), intentar intercambiar por sesión
                 if (code) {
-                    console.log('📝 Código encontrado en URL:', code);
-                    console.log('📍 Ubicación del código:', urlParams.get('code') ? 'query string' : 'hash');
-                    console.log('🔗 URL completa a procesar:', currentUrl);
+                    // console.log('📝 Código encontrado en URL');
                     
                     try {
                         // 🔥 SOLUCIÓN: Pasar la URL completa, no solo el código
@@ -414,12 +508,7 @@
                         const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(currentUrl);
                         
                         if (exchangeError) {
-                            console.error('❌ Error en exchangeCodeForSession:', exchangeError);
-                            console.error('Detalles del error:', {
-                                message: exchangeError.message,
-                                status: exchangeError.status,
-                                name: exchangeError.name
-                            });
+                            // console.error('❌ Error en exchangeCodeForSession:', exchangeError);
                             
                             // Si el error es relacionado con code_verifier, indicar que debe usar el método sin PKCE
                             if (exchangeError.message?.includes('code_verifier') || exchangeError.message?.includes('code verifier')) {
@@ -431,19 +520,17 @@
                         }
                         
                         if (data.session) {
-                            console.log('✅ Sesión establecida correctamente con exchangeCodeForSession');
-                            console.log('Usuario autenticado:', data.session.user?.email);
+                            // console.log('✅ Sesión establecida correctamente con exchangeCodeForSession');
                             // Limpiar la URL de parámetros sensibles
                             window.history.replaceState({}, document.title, window.location.pathname);
                             return true;
                         } else {
-                            console.error('❌ exchangeCodeForSession no devolvió sesión');
-                            console.log('Datos recibidos:', data);
+                            // console.error('❌ exchangeCodeForSession no devolvió sesión');
                             showError('No se pudo establecer la sesión. Por favor, solicita un nuevo enlace de recuperación.');
                             return false;
                         }
                     } catch (exchangeErr) {
-                        console.error('❌ Excepción en exchangeCodeForSession:', exchangeErr);
+                        // console.error('❌ Excepción en exchangeCodeForSession:', exchangeErr);
                         showError('Error inesperado al procesar el enlace: ' + (exchangeErr.message || exchangeErr));
                         return false;
                     }
@@ -451,16 +538,16 @@
                 
                 // Si hay hash pero no código, también intentar procesarlo (puede contener otros parámetros)
                 if (hasHash && !code) {
-                    console.log('📝 Hash encontrado en URL sin código, intentando procesar...');
+                    // console.log('📝 Hash encontrado en URL sin código, intentando procesar...');
                     try {
                         const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(currentUrl);
                         if (!exchangeError && data.session) {
-                            console.log('✅ Sesión establecida desde hash');
+                            // console.log('✅ Sesión establecida desde hash');
                             window.history.replaceState({}, document.title, window.location.pathname);
                             return true;
                         }
                     } catch (err) {
-                        console.log('⚠️ No se pudo procesar hash:', err);
+                        // console.log('⚠️ No se pudo procesar hash:', err);
                     }
                 }
                 
@@ -469,20 +556,20 @@
                 const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
                 
                 if (accessToken && refreshToken) {
-                    console.log('🔑 Tokens encontrados en URL, estableciendo sesión...');
+                    // console.log('🔑 Tokens encontrados en URL, estableciendo sesión...');
                     const { data, error: sessionError } = await supabase.auth.setSession({
                         access_token: accessToken,
                         refresh_token: refreshToken
                     });
                     
                     if (sessionError) {
-                        console.error('❌ Error estableciendo sesión con tokens:', sessionError);
+                        // console.error('❌ Error estableciendo sesión con tokens:', sessionError);
                         showError('Error al establecer la sesión. El enlace puede haber expirado.');
                         return false;
                     }
                     
                     if (data.session) {
-                        console.log('✅ Sesión establecida con tokens directos');
+                        // console.log('✅ Sesión establecida con tokens directos');
                         window.history.replaceState({}, document.title, window.location.pathname);
                         return true;
                     }
@@ -494,32 +581,32 @@
                 const type = urlParams.get('type') || hashParams.get('type');
                 
                 if (token && type === 'recovery' && !email) {
-                    console.log('🔐 Token de recuperación encontrado (formato con token_hash), verificando...');
+                    // console.log('🔐 Token de recuperación encontrado (formato con token_hash), verificando...');
                     const { data, error: verifyError } = await supabase.auth.verifyOtp({
                         token_hash: token,
                         type: 'recovery'
                     });
                     
                     if (verifyError) {
-                        console.error('❌ Error verificando token:', verifyError);
+                        // console.error('❌ Error verificando token:', verifyError);
                         showError('El enlace de recuperación es inválido o ha expirado. Por favor, solicita un nuevo enlace.');
                         return false;
                     }
                     
                     if (data.session) {
-                        console.log('✅ Sesión establecida después de verificar token');
+                        // console.log('✅ Sesión establecida después de verificar token');
                         window.history.replaceState({}, document.title, window.location.pathname);
                         return true;
                     }
                 }
                 
                 // Si llegamos aquí sin sesión, mostrar error
-                console.error('❌ No se encontraron parámetros válidos en la URL');
+                // console.error('❌ No se encontraron parámetros válidos en la URL');
                 showError('No se encontró código o token de recuperación válido en la URL. Por favor, solicita un nuevo enlace de recuperación.');
                 return false;
                 
             } catch (error) {
-                console.error('❌ Error procesando recuperación:', error);
+                // console.error('❌ Error procesando recuperación:', error);
                 showError('Error inesperado: ' + (error.message || error));
                 return false;
             }
@@ -602,9 +689,9 @@
         
         // Escuchar cambios en la sesión de Supabase
         supabase.auth.onAuthStateChange((event, session) => {
-            console.log('🔄 Cambio en estado de autenticación:', event, session ? 'Sesión activa' : 'Sin sesión');
+            // console.log('🔄 Cambio en estado de autenticación:', event, session ? 'Sesión activa' : 'Sin sesión');
             if (event === 'SIGNED_IN' && session) {
-                console.log('✅ Usuario autenticado automáticamente');
+                // console.log('✅ Usuario autenticado automáticamente');
                 // Si se estableció la sesión, ocultar loading y mostrar formulario
                 hideLoading();
                 window.history.replaceState({}, document.title, window.location.pathname);
@@ -615,10 +702,7 @@
         async function init() {
             showLoading();
             
-            console.log('🚀 Inicializando página de recuperación de contraseña...');
-            console.log('URL completa:', window.location.href);
-            console.log('Query string:', window.location.search);
-            console.log('Hash:', window.location.hash);
+            // console.log('🚀 Inicializando página de recuperación de contraseña...');
             
             // Procesar la recuperación
             const hasSession = await processRecovery();
@@ -626,10 +710,10 @@
             hideLoading();
             
             if (!hasSession) {
-                console.log('❌ No se pudo establecer sesión, ocultando formulario');
+                // console.log('❌ No se pudo establecer sesión, ocultando formulario');
                 document.getElementById('resetForm').style.display = 'none';
             } else {
-                console.log('✅ Sesión establecida, mostrando formulario');
+                // console.log('✅ Sesión establecida, mostrando formulario');
             }
         }
         
