@@ -3,8 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Redirigiendo a Bar'ia...</title>
+    <title>Restablecer Contraseña - Bar'ia</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             display: flex;
@@ -18,10 +25,17 @@
             text-align: center;
             padding: 20px;
         }
+        
         .container {
             max-width: 400px;
             width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }
+        
         .logo {
             font-size: 3rem;
             font-weight: bold;
@@ -30,131 +44,452 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            background-size: 200% 100%;
+            animation: gradient-shift 2.5s ease-in-out infinite;
         }
-        .message {
-            font-size: 1.1rem;
+        
+        @keyframes gradient-shift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        
+        .subtitle {
+            font-size: 0.9rem;
+            opacity: 0.8;
             margin-bottom: 2rem;
-            opacity: 0.9;
         }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        .input-wrapper {
+            position: relative;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            padding-right: 45px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 5px;
+        }
+        
+        .toggle-password:hover {
+            color: white;
+        }
+        
+        .error-message {
+            background: rgba(255, 0, 0, 0.2);
+            border: 1px solid rgba(255, 0, 0, 0.5);
+            color: #ffcccc;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            display: none;
+        }
+        
+        .success-message {
+            background: rgba(0, 255, 0, 0.2);
+            border: 1px solid rgba(0, 255, 0, 0.5);
+            color: #ccffcc;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            display: none;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            background: white;
+            color: #667eea;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+        }
+        
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
         .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(102, 126, 234, 0.3);
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-state {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .loading-spinner {
             border: 3px solid rgba(255, 255, 255, 0.3);
             border-top: 3px solid white;
             border-radius: 50%;
             width: 40px;
             height: 40px;
             animation: spin 1s linear infinite;
-            margin: 0 auto;
+            margin: 0 auto 1rem;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        
+        .form-container {
+            display: block;
         }
-        .error {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 1rem;
-            border-radius: 8px;
-            margin-top: 1rem;
+        
+        .back-link {
+            margin-top: 1.5rem;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        
+        .back-link:hover {
+            color: white;
+            text-decoration: underline;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="logo">Bar'ia</div>
-        <div class="message" id="message">Redirigiendo a la aplicación...</div>
-        <div class="spinner" id="spinner"></div>
-        <div id="error" class="error" style="display: none;"></div>
+        <p class="subtitle">Restablecer tu contraseña</p>
+        
+        <!-- Estado de carga -->
+        <div class="loading-state" id="loadingState">
+            <div class="loading-spinner"></div>
+            <p>Procesando...</p>
+        </div>
+        
+        <!-- Formulario de cambio de contraseña -->
+        <div class="form-container" id="formContainer">
+            <div class="error-message" id="errorMessage"></div>
+            <div class="success-message" id="successMessage"></div>
+            
+            <form id="resetForm">
+                <div class="form-group">
+                    <label for="newPassword">Nueva Contraseña</label>
+                    <div class="input-wrapper">
+                        <input 
+                            type="password" 
+                            id="newPassword" 
+                            name="newPassword" 
+                            placeholder="Mínimo 6 caracteres"
+                            required
+                            minlength="6">
+                        <button type="button" class="toggle-password" onclick="togglePassword('newPassword')">👁️</button>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirmPassword">Confirmar Contraseña</label>
+                    <div class="input-wrapper">
+                        <input 
+                            type="password" 
+                            id="confirmPassword" 
+                            name="confirmPassword" 
+                            placeholder="Repite la contraseña"
+                            required
+                            minlength="6">
+                        <button type="button" class="toggle-password" onclick="togglePassword('confirmPassword')">👁️</button>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn" id="submitBtn">
+                    Cambiar Contraseña
+                </button>
+            </form>
+            
+            <a href="com.baria.app://auth/login" class="back-link" id="backLink" style="display: none;">
+                Volver a la aplicación
+            </a>
+        </div>
     </div>
 
     <script>
         (function() {
             'use strict';
             
-            // Obtener parámetros de la URL
-            const urlParams = new URLSearchParams(window.location.search);
-            const urlHash = window.location.hash.substring(1); // Obtener fragment (#)
-            const hashParams = urlHash ? new URLSearchParams(urlHash) : null;
+            // Configuración de Supabase
+            const SUPABASE_URL = 'https://tmtwnwppnvpxlachhiet.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtdHdud3BwbnZweGxhY2hoaWV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1NDI4NDgsImV4cCI6MjA3NjExODg0OH0.VZ8dBphFebM_ffIGOUMtcB1RN3Rgg1xFQrVu1GD19Xs';
             
-            // Buscar código en query params o en hash
-            const code = urlParams.get('code') || (hashParams ? hashParams.get('code') : null);
-            const token = urlParams.get('token');
-            const type = urlParams.get('type');
-            const accessToken = urlParams.get('access_token') || (hashParams ? hashParams.get('access_token') : null);
-            const refreshToken = urlParams.get('refresh_token') || (hashParams ? hashParams.get('refresh_token') : null);
-            const error = urlParams.get('error') || (hashParams ? hashParams.get('error') : null);
-            const errorDescription = urlParams.get('error_description') || (hashParams ? hashParams.get('error_description') : null);
-
-            // Deep link de la aplicación
-            const APP_DEEP_LINK = 'com.baria.app://auth/reset-password';
-
-            function redirectToApp() {
-                let deepLinkUrl = APP_DEEP_LINK;
-
-                // Construir la URL del deep link con los parámetros
-                if (code) {
-                    // Si hay código, agregarlo como query param
-                    deepLinkUrl += '?code=' + encodeURIComponent(code);
-                } else if (token && type === 'recovery') {
-                    // Si hay token de recuperación, agregarlo como query param
-                    deepLinkUrl += '?token=' + encodeURIComponent(token) + '&type=' + encodeURIComponent(type);
-                } else if (accessToken && refreshToken) {
-                    // Si hay tokens, agregarlos en el fragment
-                    deepLinkUrl += '#' + new URLSearchParams({
-                        access_token: accessToken,
-                        refresh_token: refreshToken
-                    }).toString();
-                }
-
-                console.log('Intentando abrir:', deepLinkUrl);
-
-                // Intentar abrir la app
-                window.location.href = deepLinkUrl;
-
-                // Si después de 2 segundos no se abrió la app, mostrar instrucciones
-                setTimeout(function() {
-                    showError('No se pudo abrir la aplicación automáticamente.');
-                    showManualInstructions(deepLinkUrl);
-                }, 2000);
+            // Inicializar Supabase
+            const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            
+            let recoveryCode = null;
+            let accessToken = null;
+            let refreshToken = null;
+            
+            // Obtener parámetros de la URL
+            function getUrlParams() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const urlHash = window.location.hash.substring(1);
+                const hashParams = urlHash ? new URLSearchParams(urlHash) : null;
+                
+                return {
+                    code: urlParams.get('code') || (hashParams ? hashParams.get('code') : null),
+                    access_token: urlParams.get('access_token') || (hashParams ? hashParams.get('access_token') : null),
+                    refresh_token: urlParams.get('refresh_token') || (hashParams ? hashParams.get('refresh_token') : null),
+                    error: urlParams.get('error') || (hashParams ? hashParams.get('error') : null),
+                    error_description: urlParams.get('error_description') || (hashParams ? hashParams.get('error_description') : null)
+                };
             }
-
+            
+            // Mostrar/ocultar elementos
+            function showLoading() {
+                document.getElementById('loadingState').style.display = 'block';
+                document.getElementById('formContainer').style.display = 'none';
+            }
+            
+            function hideLoading() {
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('formContainer').style.display = 'block';
+            }
+            
             function showError(message) {
-                var spinner = document.getElementById('spinner');
-                var errorDiv = document.getElementById('error');
-                if (spinner) spinner.style.display = 'none';
-                if (errorDiv) {
-                    errorDiv.style.display = 'block';
-                    errorDiv.innerHTML = '<strong>Error:</strong> ' + message;
+                const errorDiv = document.getElementById('errorMessage');
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+                document.getElementById('successMessage').style.display = 'none';
+            }
+            
+            function showSuccess(message) {
+                const successDiv = document.getElementById('successMessage');
+                successDiv.textContent = message;
+                successDiv.style.display = 'block';
+                document.getElementById('errorMessage').style.display = 'none';
+            }
+            
+            function hideMessages() {
+                document.getElementById('errorMessage').style.display = 'none';
+                document.getElementById('successMessage').style.display = 'none';
+            }
+            
+            // Toggle password visibility
+            window.togglePassword = function(inputId) {
+                const input = document.getElementById(inputId);
+                const button = input.nextElementSibling;
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    button.textContent = '🙈';
+                } else {
+                    input.type = 'password';
+                    button.textContent = '👁️';
+                }
+            };
+            
+            // Procesar código o tokens de recuperación
+            async function processRecovery() {
+                const params = getUrlParams();
+                
+                if (params.error) {
+                    showError('Error: ' + (params.error_description || params.error));
+                    return false;
+                }
+                
+                // Si hay código, intercambiarlo por sesión
+                if (params.code) {
+                    try {
+                        const { data, error } = await supabase.auth.exchangeCodeForSession(params.code);
+                        if (error) {
+                            showError('El código de recuperación es inválido o ha expirado. Solicita uno nuevo.');
+                            return false;
+                        }
+                        if (data.session) {
+                            console.log('Sesión de recuperación establecida');
+                            // Limpiar URL
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                            return true;
+                        }
+                    } catch (error) {
+                        showError('Error procesando el código de recuperación: ' + error.message);
+                        return false;
+                    }
+                }
+                
+                // Si hay tokens, establecer la sesión
+                if (params.access_token && params.refresh_token) {
+                    try {
+                        const { data, error } = await supabase.auth.setSession({
+                            access_token: params.access_token,
+                            refresh_token: params.refresh_token
+                        });
+                        if (error) {
+                            showError('Los tokens de recuperación son inválidos o han expirado. Solicita uno nuevo.');
+                            return false;
+                        }
+                        if (data.session) {
+                            console.log('Sesión de recuperación establecida');
+                            // Limpiar URL
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                            return true;
+                        }
+                    } catch (error) {
+                        showError('Error estableciendo la sesión: ' + error.message);
+                        return false;
+                    }
+                }
+                
+                // Verificar si ya hay una sesión activa
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session) {
+                    console.log('Ya hay una sesión activa');
+                    return true;
+                }
+                
+                showError('No se encontró código o token de recuperación válido en la URL.');
+                return false;
+            }
+            
+            // Cambiar contraseña
+            async function changePassword(newPassword) {
+                try {
+                    const { data, error } = await supabase.auth.updateUser({
+                        password: newPassword
+                    });
+                    
+                    if (error) {
+                        throw error;
+                    }
+                    
+                    return { success: true, error: null };
+                } catch (error) {
+                    return { success: false, error: error };
                 }
             }
-
-            function showManualInstructions(deepLink) {
-                var messageDiv = document.getElementById('message');
-                if (messageDiv) {
-                    messageDiv.innerHTML = 
-                        '<p>Por favor, copia este enlace y ábrelo manualmente:</p>' +
-                        '<p style="font-size: 0.9rem; word-break: break-all; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px; margin: 10px 0;">' +
-                        deepLink +
-                        '</p>' +
-                        '<p>O abre la aplicación Bar\'ia y ve a "Recuperar Contraseña"</p>';
-                }
-            }
-
-            // Función principal de inicialización
-            function init() {
-                // Manejar errores
-                if (error) {
-                    showError(errorDescription || error);
+            
+            // Manejar envío del formulario
+            document.getElementById('resetForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                hideMessages();
+                
+                const newPassword = document.getElementById('newPassword').value;
+                const confirmPassword = document.getElementById('confirmPassword').value;
+                
+                // Validaciones
+                if (newPassword.length < 6) {
+                    showError('La contraseña debe tener al menos 6 caracteres.');
                     return;
                 }
-
-                // Si hay código, token de recuperación o tokens, redirigir a la app
-                if (code || (token && type === 'recovery') || (accessToken && refreshToken)) {
-                    redirectToApp();
-                } else {
-                    showError('No se encontró código o token de recuperación en la URL.');
+                
+                if (newPassword !== confirmPassword) {
+                    showError('Las contraseñas no coinciden.');
+                    return;
+                }
+                
+                const submitBtn = document.getElementById('submitBtn');
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner"></span> Cambiando contraseña...';
+                
+                try {
+                    const result = await changePassword(newPassword);
+                    
+                    if (result.success) {
+                        showSuccess('¡Contraseña cambiada exitosamente!');
+                        document.getElementById('resetForm').style.display = 'none';
+                        document.getElementById('backLink').style.display = 'block';
+                        
+                        // Cerrar sesión después de cambiar la contraseña
+                        setTimeout(async () => {
+                            await supabase.auth.signOut();
+                        }, 2000);
+                    } else {
+                        let errorMsg = 'Error al cambiar la contraseña.';
+                        if (result.error) {
+                            if (result.error.message.includes('same')) {
+                                errorMsg = 'La nueva contraseña debe ser diferente a la actual.';
+                            } else if (result.error.message.includes('weak')) {
+                                errorMsg = 'La contraseña es muy débil. Usa una contraseña más segura.';
+                            } else {
+                                errorMsg = 'Error: ' + result.error.message;
+                            }
+                        }
+                        showError(errorMsg);
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Cambiar Contraseña';
+                    }
+                } catch (error) {
+                    showError('Error inesperado: ' + error.message);
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Cambiar Contraseña';
+                }
+            });
+            
+            // Inicializar cuando el DOM esté listo
+            async function init() {
+                showLoading();
+                
+                const hasSession = await processRecovery();
+                
+                hideLoading();
+                
+                if (!hasSession) {
+                    document.getElementById('resetForm').style.display = 'none';
                 }
             }
-
-            // Ejecutar cuando el DOM esté listo
+            
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', init);
             } else {
