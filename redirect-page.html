@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redirigiendo a Bar'ia...</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 400px;
+            width: 100%;
+        }
+        .logo {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            background: linear-gradient(90deg, #FF1493 0%, #FF00FF 25%, #8A2BE2 50%, #9370DB 75%, #4169E1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .message {
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .error {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+        .button {
+            background: white;
+            color: #667eea;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 1rem;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .button:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">Bar'ia</div>
+        <div class="message" id="message">Redirigiendo a la aplicación...</div>
+        <div class="spinner" id="spinner"></div>
+        <div id="error" class="error" style="display: none;"></div>
+    </div>
+
+    <script>
+        // Obtener parámetros de la URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const accessToken = urlParams.get('access_token');
+        const refreshToken = urlParams.get('refresh_token');
+        const error = urlParams.get('error');
+        const errorDescription = urlParams.get('error_description');
+
+        // Deep link de la aplicación
+        const APP_DEEP_LINK = 'com.baria.app://auth/reset-password';
+
+        function redirectToApp() {
+            let deepLinkUrl = APP_DEEP_LINK;
+
+            // Construir la URL del deep link con los parámetros
+            if (code) {
+                // Si hay código, agregarlo como query param
+                deepLinkUrl += '?code=' + encodeURIComponent(code);
+            } else if (accessToken && refreshToken) {
+                // Si hay tokens, agregarlos en el fragment
+                deepLinkUrl += '#' + new URLSearchParams({
+                    access_token: accessToken,
+                    refresh_token: refreshToken
+                }).toString();
+            }
+
+            console.log('Intentando abrir:', deepLinkUrl);
+
+            // Intentar abrir la app
+            window.location.href = deepLinkUrl;
+
+            // Si después de 2 segundos no se abrió la app, mostrar instrucciones
+            setTimeout(() => {
+                showError('No se pudo abrir la aplicación automáticamente.');
+                showManualInstructions(deepLinkUrl);
+            }, 2000);
+        }
+
+        function showError(message) {
+            document.getElementById('spinner').style.display = 'none';
+            const errorDiv = document.getElementById('error');
+            errorDiv.style.display = 'block';
+            errorDiv.innerHTML = '<strong>Error:</strong> ' + message;
+        }
+
+        function showManualInstructions(deepLink) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.innerHTML = `
+                <p>Por favor, copia este enlace y ábrelo manualmente:</p>
+                <p style="font-size: 0.9rem; word-break: break-all; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px; margin: 10px 0;">
+                    ${deepLink}
+                </p>
+                <p>O abre la aplicación Bar'ia y ve a "Recuperar Contraseña"</p>
+            `;
+        }
+
+        // Manejar errores
+        if (error) {
+            document.getElementById('spinner').style.display = 'none';
+            showError(errorDescription || error);
+            return;
+        }
+
+        // Si hay código o tokens, redirigir a la app
+        if (code || (accessToken && refreshToken)) {
+            redirectToApp();
+        } else {
+            showError('No se encontró código de recuperación en la URL.');
+        }
+    </script>
+</body>
+</html>
+
