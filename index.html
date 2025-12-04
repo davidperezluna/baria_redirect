@@ -209,9 +209,9 @@
         }
     </style>
 </head>
-<body>
+<body oncontextmenu="return false;" onselectstart="return false;" ondragstart="return false;">
     <div class="container">
-        <div class="logo">Bar'ia v5</div>
+        <div class="logo">Bar'ia</div>
         <p class="subtitle">Restablecer tu contraseña</p>
         
         <!-- Estado de carga -->
@@ -271,6 +271,69 @@
         // La seguridad real se basa en Row Level Security (RLS) y políticas en Supabase.
         (function() {
             'use strict';
+            
+            // Deshabilitar clic derecho
+            document.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                return false;
+            }, false);
+            
+            // Deshabilitar selección de texto
+            document.addEventListener('selectstart', function(e) {
+                e.preventDefault();
+                return false;
+            }, false);
+            
+            // Deshabilitar arrastrar
+            document.addEventListener('dragstart', function(e) {
+                e.preventDefault();
+                return false;
+            }, false);
+            
+            // Deshabilitar atajos de teclado comunes para inspección
+            document.addEventListener('keydown', function(e) {
+                // Deshabilitar F12
+                if (e.key === 'F12') {
+                    e.preventDefault();
+                    return false;
+                }
+                
+                // Deshabilitar Ctrl+Shift+I (DevTools)
+                if (e.ctrlKey && e.shiftKey && e.key === 'I') {
+                    e.preventDefault();
+                    return false;
+                }
+                
+                // Deshabilitar Ctrl+Shift+J (Console)
+                if (e.ctrlKey && e.shiftKey && e.key === 'J') {
+                    e.preventDefault();
+                    return false;
+                }
+                
+                // Deshabilitar Ctrl+Shift+C (Inspector)
+                if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+                    e.preventDefault();
+                    return false;
+                }
+                
+                // Deshabilitar Ctrl+U (Ver código fuente)
+                if (e.ctrlKey && e.key === 'u') {
+                    e.preventDefault();
+                    return false;
+                }
+                
+                // Deshabilitar Ctrl+S (Guardar página)
+                if (e.ctrlKey && e.key === 's') {
+                    e.preventDefault();
+                    return false;
+                }
+                
+                // Deshabilitar Ctrl+A (Seleccionar todo)
+                if (e.ctrlKey && e.key === 'a') {
+                    e.preventDefault();
+                    return false;
+                }
+            }, false);
             
             // Guardar referencia original del console para uso interno
             const _console = {
