@@ -211,7 +211,7 @@
 </head>
 <body>
     <div class="container">
-        <div class="logo">Bar'ia v2</div>
+        <div class="logo">Bar'ia v3</div>
         <p class="subtitle">Restablecer tu contraseña</p>
         
         <!-- Estado de carga -->
@@ -331,19 +331,19 @@
                 console.log('🔍 Iniciando procesamiento de recuperación...');
                 console.log('URL actual:', window.location.href);
                 
-                // Obtener parámetros de la URL (query y hash)
+                // Verificar primero si ya hay una sesión activa
+                const { data: { session: existingSession } } = await supabase.auth.getSession();
+                if (existingSession) {
+                    console.log('✅ Ya hay una sesión activa');
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    return true;
+                }
+                
+                // Obtener parámetros de la URL para verificar si hay errores
                 const urlParams = new URLSearchParams(window.location.search);
                 const hashParams = new URLSearchParams(window.location.hash.substring(1));
-                
-                const code = urlParams.get('code') || hashParams.get('code');
-                const token = urlParams.get('token') || hashParams.get('token');
-                const type = urlParams.get('type') || hashParams.get('type');
-                const accessToken = urlParams.get('access_token') || hashParams.get('access_token');
-                const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
                 const error = urlParams.get('error') || hashParams.get('error');
                 const errorDescription = urlParams.get('error_description') || hashParams.get('error_description');
-                
-                console.log('Parámetros encontrados:', { code, token, type, accessToken: !!accessToken, refreshToken: !!refreshToken, error });
                 
                 // Si hay error, mostrarlo
                 if (error) {
@@ -352,7 +352,49 @@
                     return false;
                 }
                 
-                // Si hay tokens directos en la URL, establecer la sesión directamente
+                // SOLUCIÓN REAL: Usar exchangeCodeForSession con la URL completa
+                // Esto funciona incluso con PKCE porque Supabase extrae toda la información del hash
+                const currentUrl = window.location.href;
+                const hasCode = urlParams.get('code') || hashParams.get('code');
+                const hasHash = window.location.hash.length > 0;
+                
+                // Si hay código o hash en la URL, intentar intercambiar por sesión
+                if (hasCode || hasHash) {
+                    console.log('📝 Código o hash encontrado en URL, usando exchangeCodeForSession con URL completa...');
+                    console.log('URL completa a procesar:', currentUrl);
+                    
+                    try {
+                        // 🔥 SOLUCIÓN: Pasar la URL completa, no solo el código
+                        // Supabase puede extraer toda la información necesaria del hash, incluso con PKCE
+                        const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(currentUrl);
+                        
+                        if (exchangeError) {
+                            console.error('❌ Error en exchangeCodeForSession:', exchangeError);
+                            showError('Error al validar el enlace: ' + (exchangeError.message || 'El enlace puede haber expirado o ser inválido. Por favor, solicita un nuevo enlace.'));
+                            return false;
+                        }
+                        
+                        if (data.session) {
+                            console.log('✅ Sesión establecida correctamente con exchangeCodeForSession');
+                            // Limpiar la URL de parámetros sensibles
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                            return true;
+                        } else {
+                            console.error('❌ exchangeCodeForSession no devolvió sesión');
+                            showError('No se pudo establecer la sesión. Por favor, solicita un nuevo enlace de recuperación.');
+                            return false;
+                        }
+                    } catch (exchangeErr) {
+                        console.error('❌ Excepción en exchangeCodeForSession:', exchangeErr);
+                        showError('Error inesperado al procesar el enlace: ' + (exchangeErr.message || exchangeErr));
+                        return false;
+                    }
+                }
+                
+                // Si no hay código ni hash, verificar si hay tokens directos
+                const accessToken = urlParams.get('access_token') || hashParams.get('access_token');
+                const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
+                
                 if (accessToken && refreshToken) {
                     console.log('🔑 Tokens encontrados en URL, estableciendo sesión...');
                     const { data, error: sessionError } = await supabase.auth.setSession({
@@ -373,41 +415,10 @@
                     }
                 }
                 
-                // Si hay código, Supabase debería procesarlo automáticamente con detectSessionInUrl
-                // Esperar un momento para que Supabase procese
-                if (code) {
-                    console.log('📝 Código encontrado, esperando a que Supabase procese...');
-                    // Esperar más tiempo para que Supabase procese el código
-                    for (let i = 0; i < 5; i++) {
-                        await new Promise(resolve => setTimeout(resolve, 800));
-                        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-                        
-                        if (sessionError) {
-                            console.error('Error obteniendo sesión:', sessionError);
-                        }
-                        
-                        if (session) {
-                            console.log('✅ Sesión establecida después de procesar código (intento ' + (i + 1) + ')');
-                            window.history.replaceState({}, document.title, window.location.pathname);
-                            return true;
-                        }
-                    }
-                    
-                    // Si después de esperar no hay sesión, intentar intercambiar el código manualmente
-                    console.log('⚠️ No se estableció sesión automáticamente, intentando intercambiar código...');
-                    try {
-                        // Nota: exchangeCodeForSession requiere el code_verifier para PKCE
-                        // Si estamos aquí, probablemente es un problema de PKCE
-                        showError('No se pudo establecer la sesión automáticamente. Esto puede deberse a la configuración de PKCE. Por favor, intenta desde un navegador de escritorio o contacta al administrador.');
-                        return false;
-                    } catch (exchangeError) {
-                        console.error('Error intercambiando código:', exchangeError);
-                        showError('Error al procesar el código de recuperación. Por favor, solicita un nuevo enlace.');
-                        return false;
-                    }
-                }
+                // Si hay token de recuperación (formato antiguo), intentar verificarlo
+                const token = urlParams.get('token') || hashParams.get('token');
+                const type = urlParams.get('type') || hashParams.get('type');
                 
-                // Si hay token, intentar verificarlo
                 if (token && type === 'recovery') {
                     console.log('🔐 Token de recuperación encontrado, verificando...');
                     const { data, error: verifyError } = await supabase.auth.verifyOtp({
@@ -426,36 +437,11 @@
                         window.history.replaceState({}, document.title, window.location.pathname);
                         return true;
                     }
-                    
-                    // Si verifyOtp no devolvió sesión, esperar un momento
-                    console.log('⚠️ verifyOtp no devolvió sesión inmediatamente, esperando...');
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                    const { data: { session: delayedSession } } = await supabase.auth.getSession();
-                    if (delayedSession) {
-                        console.log('✅ Sesión encontrada después de esperar');
-                        window.history.replaceState({}, document.title, window.location.pathname);
-                        return true;
-                    }
-                }
-                
-                // Verificar una última vez si hay sesión (puede que Supabase la haya establecido en segundo plano)
-                const { data: { session: finalSession }, error: finalError } = await supabase.auth.getSession();
-                
-                if (finalError) {
-                    console.error('❌ Error final obteniendo sesión:', finalError);
-                    showError('Error al procesar el enlace de recuperación. Por favor, solicita un nuevo enlace.');
-                    return false;
-                }
-                
-                if (finalSession) {
-                    console.log('✅ Sesión encontrada en verificación final');
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                    return true;
                 }
                 
                 // Si llegamos aquí sin sesión, mostrar error
-                console.error('❌ No se pudo establecer la sesión después de todos los intentos');
-                showError('No se pudo establecer la sesión de recuperación. El enlace puede haber expirado o ser inválido. Por favor, solicita un nuevo enlace de recuperación.');
+                console.error('❌ No se encontraron parámetros válidos en la URL');
+                showError('No se encontró código o token de recuperación válido en la URL. Por favor, solicita un nuevo enlace de recuperación.');
                 return false;
                 
             } catch (error) {
