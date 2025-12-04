@@ -211,7 +211,7 @@
 </head>
 <body>
     <div class="container">
-        <div class="logo">Bar'ia v3</div>
+        <div class="logo">Bar'ia v4</div>
         <p class="subtitle">Restablecer tu contraseña</p>
         
         <!-- Estado de carga -->
@@ -353,34 +353,43 @@
                 }
                 
                 // SOLUCIÓN REAL: Usar exchangeCodeForSession con la URL completa
-                // Esto funciona incluso con PKCE porque Supabase extrae toda la información del hash
+                // Esto funciona incluso con PKCE porque Supabase extrae toda la información del hash o query string
                 const currentUrl = window.location.href;
-                const hasCode = urlParams.get('code') || hashParams.get('code');
+                const code = urlParams.get('code') || hashParams.get('code');
                 const hasHash = window.location.hash.length > 0;
                 
-                // Si hay código o hash en la URL, intentar intercambiar por sesión
-                if (hasCode || hasHash) {
-                    console.log('📝 Código o hash encontrado en URL, usando exchangeCodeForSession con URL completa...');
-                    console.log('URL completa a procesar:', currentUrl);
+                // Si hay código en la URL (query string o hash), intentar intercambiar por sesión
+                if (code) {
+                    console.log('📝 Código encontrado en URL:', code);
+                    console.log('📍 Ubicación del código:', urlParams.get('code') ? 'query string' : 'hash');
+                    console.log('🔗 URL completa a procesar:', currentUrl);
                     
                     try {
                         // 🔥 SOLUCIÓN: Pasar la URL completa, no solo el código
-                        // Supabase puede extraer toda la información necesaria del hash, incluso con PKCE
+                        // Supabase puede extraer toda la información necesaria de la URL completa
+                        // Funciona tanto si el código está en query string (?code=...) como en hash (#code=...)
                         const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(currentUrl);
                         
                         if (exchangeError) {
                             console.error('❌ Error en exchangeCodeForSession:', exchangeError);
+                            console.error('Detalles del error:', {
+                                message: exchangeError.message,
+                                status: exchangeError.status,
+                                name: exchangeError.name
+                            });
                             showError('Error al validar el enlace: ' + (exchangeError.message || 'El enlace puede haber expirado o ser inválido. Por favor, solicita un nuevo enlace.'));
                             return false;
                         }
                         
                         if (data.session) {
                             console.log('✅ Sesión establecida correctamente con exchangeCodeForSession');
+                            console.log('Usuario autenticado:', data.session.user?.email);
                             // Limpiar la URL de parámetros sensibles
                             window.history.replaceState({}, document.title, window.location.pathname);
                             return true;
                         } else {
                             console.error('❌ exchangeCodeForSession no devolvió sesión');
+                            console.log('Datos recibidos:', data);
                             showError('No se pudo establecer la sesión. Por favor, solicita un nuevo enlace de recuperación.');
                             return false;
                         }
@@ -388,6 +397,21 @@
                         console.error('❌ Excepción en exchangeCodeForSession:', exchangeErr);
                         showError('Error inesperado al procesar el enlace: ' + (exchangeErr.message || exchangeErr));
                         return false;
+                    }
+                }
+                
+                // Si hay hash pero no código, también intentar procesarlo (puede contener otros parámetros)
+                if (hasHash && !code) {
+                    console.log('📝 Hash encontrado en URL sin código, intentando procesar...');
+                    try {
+                        const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(currentUrl);
+                        if (!exchangeError && data.session) {
+                            console.log('✅ Sesión establecida desde hash');
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                            return true;
+                        }
+                    } catch (err) {
+                        console.log('⚠️ No se pudo procesar hash:', err);
                     }
                 }
                 
