@@ -55,22 +55,6 @@
             border-radius: 8px;
             margin-top: 1rem;
         }
-        .button {
-            background: white;
-            color: #667eea;
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 1rem;
-            text-decoration: none;
-            display: inline-block;
-        }
-        .button:hover {
-            opacity: 0.9;
-        }
     </style>
 </head>
 <body>
@@ -82,86 +66,92 @@
     </div>
 
     <script>
-        // Obtener parámetros de la URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
-        const accessToken = urlParams.get('access_token');
-        const refreshToken = urlParams.get('refresh_token');
-        const error = urlParams.get('error');
-        const errorDescription = urlParams.get('error_description');
+        (function() {
+            'use strict';
+            
+            // Obtener parámetros de la URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const accessToken = urlParams.get('access_token');
+            const refreshToken = urlParams.get('refresh_token');
+            const error = urlParams.get('error');
+            const errorDescription = urlParams.get('error_description');
 
-        // Deep link de la aplicación
-        const APP_DEEP_LINK = 'com.baria.app://auth/reset-password';
+            // Deep link de la aplicación
+            const APP_DEEP_LINK = 'com.baria.app://auth/reset-password';
 
-        function redirectToApp() {
-            let deepLinkUrl = APP_DEEP_LINK;
+            function redirectToApp() {
+                let deepLinkUrl = APP_DEEP_LINK;
 
-            // Construir la URL del deep link con los parámetros
-            if (code) {
-                // Si hay código, agregarlo como query param
-                deepLinkUrl += '?code=' + encodeURIComponent(code);
-            } else if (accessToken && refreshToken) {
-                // Si hay tokens, agregarlos en el fragment
-                deepLinkUrl += '#' + new URLSearchParams({
-                    access_token: accessToken,
-                    refresh_token: refreshToken
-                }).toString();
+                // Construir la URL del deep link con los parámetros
+                if (code) {
+                    // Si hay código, agregarlo como query param
+                    deepLinkUrl += '?code=' + encodeURIComponent(code);
+                } else if (accessToken && refreshToken) {
+                    // Si hay tokens, agregarlos en el fragment
+                    deepLinkUrl += '#' + new URLSearchParams({
+                        access_token: accessToken,
+                        refresh_token: refreshToken
+                    }).toString();
+                }
+
+                console.log('Intentando abrir:', deepLinkUrl);
+
+                // Intentar abrir la app
+                window.location.href = deepLinkUrl;
+
+                // Si después de 2 segundos no se abrió la app, mostrar instrucciones
+                setTimeout(function() {
+                    showError('No se pudo abrir la aplicación automáticamente.');
+                    showManualInstructions(deepLinkUrl);
+                }, 2000);
             }
 
-            console.log('Intentando abrir:', deepLinkUrl);
-
-            // Intentar abrir la app
-            window.location.href = deepLinkUrl;
-
-            // Si después de 2 segundos no se abrió la app, mostrar instrucciones
-            setTimeout(() => {
-                showError('No se pudo abrir la aplicación automáticamente.');
-                showManualInstructions(deepLinkUrl);
-            }, 2000);
-        }
-
-        function showError(message) {
-            document.getElementById('spinner').style.display = 'none';
-            const errorDiv = document.getElementById('error');
-            errorDiv.style.display = 'block';
-            errorDiv.innerHTML = '<strong>Error:</strong> ' + message;
-        }
-
-        function showManualInstructions(deepLink) {
-            const messageDiv = document.getElementById('message');
-            messageDiv.innerHTML = `
-                <p>Por favor, copia este enlace y ábrelo manualmente:</p>
-                <p style="font-size: 0.9rem; word-break: break-all; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px; margin: 10px 0;">
-                    ${deepLink}
-                </p>
-                <p>O abre la aplicación Bar'ia y ve a "Recuperar Contraseña"</p>
-            `;
-        }
-
-        // Función principal de inicialización
-        function init() {
-            // Manejar errores
-            if (error) {
-                document.getElementById('spinner').style.display = 'none';
-                showError(errorDescription || error);
-                return;
+            function showError(message) {
+                var spinner = document.getElementById('spinner');
+                var errorDiv = document.getElementById('error');
+                if (spinner) spinner.style.display = 'none';
+                if (errorDiv) {
+                    errorDiv.style.display = 'block';
+                    errorDiv.innerHTML = '<strong>Error:</strong> ' + message;
+                }
             }
 
-            // Si hay código o tokens, redirigir a la app
-            if (code || (accessToken && refreshToken)) {
-                redirectToApp();
+            function showManualInstructions(deepLink) {
+                var messageDiv = document.getElementById('message');
+                if (messageDiv) {
+                    messageDiv.innerHTML = 
+                        '<p>Por favor, copia este enlace y ábrelo manualmente:</p>' +
+                        '<p style="font-size: 0.9rem; word-break: break-all; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px; margin: 10px 0;">' +
+                        deepLink +
+                        '</p>' +
+                        '<p>O abre la aplicación Bar\'ia y ve a "Recuperar Contraseña"</p>';
+                }
+            }
+
+            // Función principal de inicialización
+            function init() {
+                // Manejar errores
+                if (error) {
+                    showError(errorDescription || error);
+                    return;
+                }
+
+                // Si hay código o tokens, redirigir a la app
+                if (code || (accessToken && refreshToken)) {
+                    redirectToApp();
+                } else {
+                    showError('No se encontró código de recuperación en la URL.');
+                }
+            }
+
+            // Ejecutar cuando el DOM esté listo
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
             } else {
-                showError('No se encontró código de recuperación en la URL.');
+                init();
             }
-        }
-
-        // Ejecutar cuando el DOM esté listo
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', init);
-        } else {
-            init();
-        }
+        })();
     </script>
 </body>
 </html>
-
